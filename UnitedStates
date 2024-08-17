@@ -3,12 +3,15 @@ library(foreign)
 library(tidyverse)
 library(lwgeom)
 
+##set working directory if needed
+#setwd("PATHTO/RoadColors")
 
 options(stringsAsFactors = FALSE)
 
-pt <- data.frame(lat = YOURLATHERE, long = YOURLONHERE)
-city <- 'CITYNAMEHERE'
-geoid <-  c('GEOID1', 'GEOID2', 'GEOIDN')
+rad <- 5000 #radius in m
+pt <- data.frame(lat = 41.82375, long = -71.41076) #latitude and longitude for map center
+city <- "providence3" #city name used for final image's filename
+geoid <-  c("44007") #list of geoids for each county needed
 
 #-------import road files.----------
 files <- list.files(path="./FeatNames", pattern="*.dbf", full.names=TRUE, recursive=FALSE) %>% as.data.frame
@@ -17,6 +20,8 @@ files$GEOID <- substr(files$path, 21, 25)
 files <- subset(files, GEOID %in% geoid)
 
 allroads <-NULL
+
+## Some error in this for loop, its not getting all the suffixes --noxx
 
 #----------combine em all and add suffixes--------------
 for (i in 1:nrow(files)) {
@@ -42,7 +47,7 @@ for (i in 1:nrow(files)) {
 
 #---------subset the roads into a circle 15 miles wide-------
 pt <- pt %>% st_as_sf(coords = c("long", "lat"), crs = 4326) %>% st_transform(2163)
-circle <- st_buffer(pt, dist = 24140.2)
+circle <- st_buffer(pt, dist = rad)
 circle <- circle %>% st_transform(st_crs(temp))
 allroads <- st_intersection(circle, allroads)
 
@@ -57,7 +62,7 @@ plotcolors <- c('Other' = '#cccccc')
 
 #get what's leftover
 findcolors <- plottype$SUFTYPABRV
-colors <- c('#59c8e5', '#fed032',  '#4cb580', '#fe9ea5', '#fe4d64', '#0a7abf', '#ff9223', '#2e968c')
+colors <- c('#59c8e5', '#fed032',  '#4cb580', '#fe9ea5', '#fe4d64', '#0a7abf', '#ff9223', '#2e968c', '#610404', '#615304', '#320461')
 
 if(length(findcolors[findcolors=="Ave"])>0) {
   plotcolors <- c(plotcolors, "Ave" = '#59c8e5')
@@ -114,6 +119,25 @@ if(length(findcolors[findcolors=="Hwy"])> 0 & length(colors[colors=="#ff9223"])>
   colors <- colors[colors !="#ff9223"]
 }
 
+#Added Court, Way, and Trail -- noxx
+if(length(findcolors[findcolors=="Ct"])>0) {
+  plotcolors <- c(plotcolors, "Ct" = '#610404')
+  findcolors <- findcolors[findcolors !="Ct"]
+  colors <- colors[colors !="#610404"]
+}
+
+if(length(findcolors[findcolors=="Way"])>0) {
+  plotcolors <- c(plotcolors, "Way" = '#615304')
+  findcolors <- findcolors[findcolors !="Way"]
+  colors <- colors[colors !="#615304"]
+}
+
+if(length(findcolors[findcolors=="Tr"])>0) {
+  plotcolors <- c(plotcolors, "Tr" = '#320461')
+  findcolors <- findcolors[findcolors !="Tr"]
+  colors <- colors[colors !="#320461"]
+}
+
 
 #go thru and assign the rest in order
 for (i in 1:length(colors)) {
@@ -144,8 +168,3 @@ ggplot() + blankbg + theme(panel.grid.major = element_line(colour = "transparent
 ggsave(paste0("./IndivRoads/", city, ".png"), plot = last_plot(),
        scale = 1, width = 24, height = 24, units = "in",
        dpi = 500)
-
-
-
-
-
